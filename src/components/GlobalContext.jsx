@@ -1,7 +1,9 @@
 import { createContext, useContext, useState } from "react";
+import { defaultFinancialYear } from "../config/financialYears";
 
 const GlobalContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useGlobalContext = () => useContext(GlobalContext);
 
 const AppContext = ({ children }) => {
@@ -11,8 +13,8 @@ const AppContext = ({ children }) => {
   const [fortnightly, setFortnightly] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [monthly, setMonthly] = useState([0, 0, 0, 0, 0, 0, 0]);
   const [yearly, setYearly] = useState([0, 0, 0, 0, 0, 0, 0]);
-  const [year, setYear] = useState("FY2425");
-  const [superRate, setSuperRate] = useState(0.115);
+  const [year, setYear] = useState(defaultFinancialYear.id);
+  const [superRate, setSuperRate] = useState(defaultFinancialYear.superRate);
   const [GST, setGST] = useState(0.1);
   const [numDayOff, setNumDayOff] = useState(9);
   const [isContract, setIsContract] = useState(true);

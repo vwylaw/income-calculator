@@ -1,13 +1,13 @@
-import FYData from "./FYData";
+import { financialYears, getFinancialYear, defaultFinancialYear } from "../config/financialYears";
 import { useGlobalContext } from "./GlobalContext";
 import calculationFromBase from "./CalculationFromBase";
 import { NumericFormat } from "react-number-format";
 
 let hourlyBase = 0;
 let newNumDayOff = 9;
-let newSuperRate = 0.115;
+let newSuperRate = defaultFinancialYear.superRate;
 let newIsContract = "True";
-let newYear = "FY2425";
+let newYear = defaultFinancialYear.id;
 
 const Table = () => {
   const {
@@ -28,8 +28,6 @@ const Table = () => {
     superRate,
     setSuperRate,
     GST,
-    setGST,
-    numDayOff,
     setNumDayOff,
     isContract,
     setIsContract,
@@ -110,59 +108,41 @@ const Table = () => {
             }}
           /> */}
 
-          <p>{newSuperRate * 100}%</p>
+          <p>{(newSuperRate * 100).toFixed(1).replace(/\.0$/, "")}%</p>
         </div>
         <div className="AdjustmentFormField">
           <label>Financial year (for income tax purpose)</label>
           <select
+            value={year}
             onChange={(e) => {
-              if (e.target.value === "FY2023-24 (1 July 23 - 30 June 24)") {
-                newYear = "FY2324";
-                setYear("FY2324");
-                newSuperRate = FYData[newYear].superRate;
-                setSuperRate(newSuperRate);
-                calculationFromBase(
-                  null,
-                  newSuperRate,
-                  newNumDayOff,
-                  newYear,
-                  hourlyBase,
-                  setHourly,
-                  setDaily,
-                  setWeekly,
-                  setFortnightly,
-                  setMonthly,
-                  setYearly,
-                  GST,
-                  isContract
-                );
-              } else if (
-                e.target.value === "FY2024-25 (1 July 24 - 30 June 25)"
-              ) {
-                newYear = "FY2425";
-                setYear("FY2425");
-                newSuperRate = FYData[newYear].superRate;
-                setSuperRate(newSuperRate);
-                calculationFromBase(
-                  null,
-                  newSuperRate,
-                  newNumDayOff,
-                  newYear,
-                  hourlyBase,
-                  setHourly,
-                  setDaily,
-                  setWeekly,
-                  setFortnightly,
-                  setMonthly,
-                  setYearly,
-                  GST,
-                  isContract
-                );
-              }
+              const selectedYearId = e.target.value;
+              const selectedFy = getFinancialYear(selectedYearId);
+              newYear = selectedYearId;
+              setYear(selectedYearId);
+              newSuperRate = selectedFy.superRate;
+              setSuperRate(newSuperRate);
+              calculationFromBase(
+                null,
+                newSuperRate,
+                newNumDayOff,
+                newYear,
+                hourlyBase,
+                setHourly,
+                setDaily,
+                setWeekly,
+                setFortnightly,
+                setMonthly,
+                setYearly,
+                GST,
+                isContract
+              );
             }}
           >
-            <option>FY2024-25 (1 July 24 - 30 June 25)</option>
-            <option>FY2023-24 (1 July 23 - 30 June 24)</option>
+            {financialYears.map((fy) => (
+              <option key={fy.id} value={fy.id}>
+                {fy.label}
+              </option>
+            ))}
           </select>
         </div>
       </form>
@@ -181,8 +161,12 @@ const Table = () => {
       </p>
       <p className="SmallText">GST: {GST * 100}%</p>
       <p className="SmallText">Super guarantee:</p>
-      <p className="SmallText"> - FY2324: 11%</p>
-      <p className="SmallText"> - FY2425: 11.5%</p>
+      {financialYears.map((fy) => (
+        <p key={fy.id} className="SmallText">
+          {" "}
+          - {fy.shortLabel}: {(fy.superRate * 100).toFixed(1).replace(/\.0$/, "")}%
+        </p>
+      ))}
 
       <table>
         <tbody>

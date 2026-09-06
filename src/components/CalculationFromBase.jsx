@@ -1,4 +1,4 @@
-import FYData from "./FYData";
+import { getFinancialYear } from "../config/financialYears";
 
 const calculationFromBase = (
   enteredValue,
@@ -33,7 +33,7 @@ const calculationFromBase = (
   };
 
 
-  let  factorOfReductionByDaysOff = 0;
+  let factorOfReductionByDaysOff = 0;
 
   isContract && hourlyBase > 0
     ? (factorOfReductionByDaysOff = 1 - newNumDayOff / 260)
@@ -41,9 +41,9 @@ const calculationFromBase = (
 
   //===HOURLY===
   //calculate new hourly base income
-  newHourly.baseIncome = parseFloat(hourlyBase);
+  newHourly.baseIncome = parseFloat(hourlyBase || 0);
   //calculate new hourly super
-  newHourly.super = parseFloat(hourlyBase) * newSuperRate;
+  newHourly.super = parseFloat(hourlyBase || 0) * newSuperRate;
   //calculate new hourly package
   newHourly.package = parseFloat(newHourly.baseIncome) + parseFloat(newHourly.super);
   //calculate new hourly GST
@@ -53,7 +53,7 @@ const calculationFromBase = (
 
   //===DAILY===
   //base income
-  newDaily.baseIncome = parseFloat(hourlyBase * 8);
+  newDaily.baseIncome = parseFloat((hourlyBase || 0) * 8);
   //super
   newDaily.super = newDaily.baseIncome * newSuperRate;
   //package
@@ -65,7 +65,7 @@ const calculationFromBase = (
 
   //===WEEKLY===
   //base income
-  newWeekly.baseIncome = parseFloat(hourlyBase * 8 * 5);
+  newWeekly.baseIncome = parseFloat((hourlyBase || 0) * 8 * 5);
   //super
   newWeekly.super = newWeekly.baseIncome * newSuperRate;
   //package
@@ -77,7 +77,7 @@ const calculationFromBase = (
 
   //===FORTNIGHTLY===
   //base income
-  newFortnightly.baseIncome = parseFloat(hourlyBase * 8 * 5 * 2);
+  newFortnightly.baseIncome = parseFloat((hourlyBase || 0) * 8 * 5 * 2);
   //super
   newFortnightly.super = newFortnightly.baseIncome * newSuperRate;
   //package
@@ -91,7 +91,7 @@ const calculationFromBase = (
 
   //===MONTHLY===
   //base income
-  newMonthly.baseIncome = parseFloat((hourlyBase * 8 * 5 * 52) / 12);
+  newMonthly.baseIncome = parseFloat(((hourlyBase || 0) * 8 * 5 * 52) / 12);
   //super
   newMonthly.super = newMonthly.baseIncome * newSuperRate;
   //package
@@ -104,7 +104,7 @@ const calculationFromBase = (
   //===YEARLY===
   //base income
   newYearly.baseIncome = parseFloat(
-    hourlyBase * 8 * 5 * 52 * factorOfReductionByDaysOff
+    (hourlyBase || 0) * 8 * 5 * 52 * factorOfReductionByDaysOff
   );
   //super
   newYearly.super = newYearly.baseIncome * newSuperRate;
@@ -119,24 +119,28 @@ const calculationFromBase = (
 
   //calculate income tax [1] - with incomeTaxRate objects
 
-  let taxBrackets = FYData[newYear].taxBrackets;
+  const fyConfig = getFinancialYear(newYear);
+  const taxBrackets = fyConfig ? fyConfig.taxBrackets : [];
 
   let yearlyBase = newMonthly.baseIncome * 12;
+  let calculatedMonthlyTax = 0;
 
   for (let i = 0; i < taxBrackets.length; i++) {
     const taxBracket = taxBrackets[i];
-    if (
-      yearlyBase > taxBracket.min &&
-      (yearlyBase <= taxBracket.max || i === taxBrackets.length - 1)
-    ) {
-      newMonthly.incomeTax = (
+    const isLastBracket = i === taxBrackets.length - 1;
+    const isOverMin = yearlyBase >= taxBracket.min || (taxBracket.min === 0 && yearlyBase >= 0);
+    const isUnderMax = taxBracket.max === 0 || taxBracket.max === Infinity || taxBracket.max === undefined || yearlyBase <= taxBracket.max;
+
+    if ((isOverMin && isUnderMax) || (isLastBracket && yearlyBase >= taxBracket.min)) {
+      calculatedMonthlyTax =
         (taxBracket.flat +
-          taxBracket.percent * (yearlyBase - taxBracket.over)) /
-        12
-      ).toFixed();
+          taxBracket.percent * Math.max(0, yearlyBase - taxBracket.over)) /
+        12;
       break;
     }
   }
+
+  newMonthly.incomeTax = calculatedMonthlyTax.toFixed();
 
   //==============================================
   //calculate income tax [1] -- hardcoded tax rates
