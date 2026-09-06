@@ -1,5 +1,6 @@
-import { createContext, useContext, useState } from "react";
-import { defaultFinancialYear } from "../config/financialYears";
+import { createContext, useContext, useState, useMemo, useCallback } from "react";
+import { defaultFinancialYear, getFinancialYear } from "../config/financialYears/index.js";
+import { calculateAllPeriods, convertToHourlyBase } from "../utils/incomeCalculator.js";
 
 const GlobalContext = createContext();
 
@@ -7,44 +8,61 @@ const GlobalContext = createContext();
 export const useGlobalContext = () => useContext(GlobalContext);
 
 const AppContext = ({ children }) => {
-  const [hourly, setHourly] = useState([0, 0, 0, 0, 0, 0, 0]);
-  const [daily, setDaily] = useState([0, 0, 0, 0, 0, 0, 0]);
-  const [weekly, setWeekly] = useState([0, 0, 0, 0, 0, 0, 0]);
-  const [fortnightly, setFortnightly] = useState([0, 0, 0, 0, 0, 0, 0]);
-  const [monthly, setMonthly] = useState([0, 0, 0, 0, 0, 0, 0]);
-  const [yearly, setYearly] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [hourlyBase, setHourlyBase] = useState(0);
   const [year, setYear] = useState(defaultFinancialYear.id);
-  const [superRate, setSuperRate] = useState(defaultFinancialYear.superRate);
   const [GST, setGST] = useState(0.1);
   const [numDayOff, setNumDayOff] = useState(9);
   const [isContract, setIsContract] = useState(true);
-  return (
-    <GlobalContext.Provider
-      value={{
-        hourly,
-        setHourly,
-        daily,
-        setDaily,
-        weekly,
-        setWeekly,
-        fortnightly,
-        setFortnightly,
-        monthly,
-        setMonthly,
-        yearly,
-        setYearly,
-        year,
-        setYear,
+
+  const selectedYearConfig = useMemo(() => getFinancialYear(year), [year]);
+  const superRate = selectedYearConfig.superRate;
+
+  const incomeData = useMemo(() => {
+    return calculateAllPeriods(hourlyBase, {
+      superRate,
+      numDayOff,
+      yearId: year,
+      GST,
+      isContract,
+    });
+  }, [hourlyBase, superRate, numDayOff, year, GST, isContract]);
+
+  const updateIncome = useCallback(
+    (enteredValue, frequency, fieldType) => {
+      const newHourlyBase = convertToHourlyBase(enteredValue, frequency, fieldType, {
         superRate,
-        setSuperRate,
         GST,
-        setGST,
-        numDayOff,
-        setNumDayOff,
-        isContract,
-        setIsContract,
-      }}
-    >
+      });
+      setHourlyBase(newHourlyBase);
+    },
+    [superRate, GST]
+  );
+
+  const value = {
+    hourlyBase,
+    setHourlyBase,
+    year,
+    setYear,
+    superRate,
+    GST,
+    setGST,
+    numDayOff,
+    setNumDayOff,
+    isContract,
+    setIsContract,
+    incomeData,
+    hourly: incomeData.hourly,
+    daily: incomeData.daily,
+    weekly: incomeData.weekly,
+    fortnightly: incomeData.fortnightly,
+    monthly: incomeData.monthly,
+    yearly: incomeData.yearly,
+    updateIncome,
+    selectedYearConfig,
+  };
+
+  return (
+    <GlobalContext.Provider value={value}>
       {children}
     </GlobalContext.Provider>
   );
