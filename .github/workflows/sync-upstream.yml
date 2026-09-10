@@ -1,0 +1,35 @@
+name: Sync fork with upstream
+
+# Keeps vwylaw/income-calculator's main branch in step with
+# cocolam-dev/income-calculator via GitHub's "sync fork" API
+# (fast-forwards when possible, otherwise a merge commit; a
+# conflicting upstream history is left alone and reported).
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # daily, 18:00 UTC (~04:00 AEST)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge upstream into main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          resp=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/merge-upstream" \
+            -f branch=main 2>&1) && rc=0 || rc=$?
+          echo "$resp"
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::Could not sync from upstream — likely a merge conflict or a change under .github/workflows/ (the default token can't push workflow files). Resolve it with a manual 'Sync fork' / local merge, or add a PAT with 'workflow' scope as SYNC_TOKEN."
+            exit 1
+          fi
